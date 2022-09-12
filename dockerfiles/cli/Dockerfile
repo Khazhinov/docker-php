@@ -53,7 +53,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY etc/cont-init.d/ /etc/cont-init.d/
 
 # Set the default work directory to our web user
-WORKDIR $WEBUSER_HOME
+WORKDIR /var/www/app
 
 # Configure S6 to drop priveleges
 ENTRYPOINT ["/init"]
