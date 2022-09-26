@@ -1,3 +1,6 @@
+
+<p align="center"><img src="/art/header.png" alt="Social Card of Docker PHP"></p>
+
 # Docker PHP 🐋
 
 Сборки PHP, оптимизированные для работы в Production
