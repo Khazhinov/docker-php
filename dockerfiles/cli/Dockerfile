@@ -14,10 +14,10 @@ LABEL modified-by="Vladislav Khazhinov (@khazhinov)"
 # Make sure we keep apt silent during installs. Set other defaults as well
 ENV DEBIAN_FRONTEND=noninteractive \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
-    WEBUSER_HOME="/var/www/app" \
+    WEBUSER_HOME="/app" \
     PUID=9999 \
     PGID=9999 \
-    LANGUAGE="ru_RU.UTF-8" \
+    LANGUAGE="ru_RU" \
     LANG="ru_RU.UTF-8"
 
 # Install Ondrej repos for Ubuntu focal, PHP8.1, composer and selected extensions
@@ -53,7 +53,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY etc/cont-init.d/ /etc/cont-init.d/
 
 # Set the default work directory to our web user
-WORKDIR /var/www/app
+WORKDIR /app
 
 # Configure S6 to drop priveleges
 ENTRYPOINT ["/init"]

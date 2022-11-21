@@ -2,7 +2,7 @@
 
 PUID=${PUID:-9999}
 PGID=${PGID:-9999}
-WEBUSER_HOME=${WEBUSER_HOME:-"/var/www/app"}
+WEBUSER_HOME=${WEBUSER_HOME:-"/app"}
 
 if [[ $PUID != 9999 || $PGID != 9999 ]]; then
 
