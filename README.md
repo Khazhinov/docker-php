@@ -19,11 +19,11 @@
 # Базовый образ RouaRunner: https://roadrunner.dev/
 FROM ghcr.io/roadrunner-server/roadrunner:latest AS roadrunner
 # Базовый образ: https://github.com/khazhinov/docker-php
-FROM khazhinov/docker-php:8.1-cli
+FROM khazhinov/docker-php:8.2-cli
 
 ## Пример для установки дополнительных расширений PHP
 #RUN apt-get update \
-#    && apt-get install -y --no-install-recommends php8.1-imagick \
+#    && apt-get install -y --no-install-recommends php8.2-imagick \
 #    && apt-get clean \
 #    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
@@ -42,11 +42,11 @@ CMD ["su", "webuser", "-c", "php artisan octane:roadrunner --host=0.0.0.0 --port
 
 ```dockerfile
 # Базовый образ: https://github.com/khazhinov/docker-php
-FROM khazhinov/docker-php:8.1-cli
+FROM khazhinov/docker-php:8.2-cli
 
 ## Пример для установки дополнительных расширений PHP
 #RUN apt-get update \
-#    && apt-get install -y --no-install-recommends php8.1-pgsql \
+#    && apt-get install -y --no-install-recommends php8.2-pgsql \
 #    && apt-get clean \
 #    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 

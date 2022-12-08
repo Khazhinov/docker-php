@@ -1,5 +1,5 @@
 #####################################################
-# Server Side Up -  PHP 8.1 / CLI image
+# Server Side Up -  PHP 8.2 / CLI image
 #####################################################
 
 # Default upstream channel to `null` so we default pulling `serversideup/docker-baseimage-s6-overlay-ubuntu:20.04`
@@ -20,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LANGUAGE="ru_RU" \
     LANG="ru_RU.UTF-8"
 
-# Install Ondrej repos for Ubuntu focal, PHP8.1, composer and selected extensions
+# Install Ondrej repos for Ubuntu focal, PHP8.2, composer and selected extensions
 RUN apt-get update \
     && echo "Добавление пользователя без привилегий..." \
     && groupadd -r -g $PGID webgroup \
@@ -34,17 +34,24 @@ RUN apt-get update \
         ca-certificates \
         curl \
         unzip \
-        php8.1-cli \
-        php8.1-common \
-        php8.1-curl \
-        php8.1-mbstring \
-        php8.1-pgsql \
-        php8.1-gd \
-        php8.1-redis \
-        php8.1-xml \
-        php8.1-zip \
+        git \
+        make \
+        php8.2-dev \
+        php8.2-cli \
+        php8.2-common \
+        php8.2-curl \
+        php8.2-mbstring \
+        php8.2-pgsql \
+        php8.2-gd \
+        php8.2-xml \
+        php8.2-zip \
+        php-pear \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+
+RUN pecl install redis
+
+COPY conf.d/*.ini /etc/php/8.2/cli/conf.d/
 
 # Pull the official composer 2 image, and copy the composer executable from there
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
