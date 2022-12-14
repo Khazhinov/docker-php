@@ -46,6 +46,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
+COPY conf.d/*.ini /etc/php/8.1/cli/conf.d/
+
 # Pull the official composer 2 image, and copy the composer executable from there
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
