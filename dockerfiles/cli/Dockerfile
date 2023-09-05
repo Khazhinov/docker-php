@@ -1,69 +1,86 @@
-#####################################################
-# Server Side Up -  PHP 8.2 / CLI image
-#####################################################
-
-# Default upstream channel to `null` so we default pulling `serversideup/docker-baseimage-s6-overlay-ubuntu:20.04`
-# but can also pull the beta image from `serversideup/docker-baseimage-s6-overlay-ubuntu:beta-20.04`
+# Базовый образ с супервизором процессов ServerSideUp: https://hub.docker.com/r/serversideup/s6-overlay
 ARG UPSTREAM_CHANNEL=''
+ARG BASE_OS_FLAVOR='ubuntu'
+ARG BASE_OS_VERSION='22.04'
+ARG S6_OVERLAY_VERSION='v3.1.4.2'
+ARG BASE_IMAGE="serversideup/s6-overlay:${UPSTREAM_CHANNEL}${BASE_OS_FLAVOR}-${BASE_OS_VERSION}-${S6_OVERLAY_VERSION}"
 
-FROM serversideup/docker-baseimage-s6-overlay-ubuntu:${UPSTREAM_CHANNEL}20.04
+# Установка репозиториев PHP
+FROM ${BASE_IMAGE} as repo-config
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gnupg2 ca-certificates software-properties-common \
+    && add-apt-repository -y ppa:ondrej/php
+
+# Сборка результирующего образа
+FROM ${BASE_IMAGE}
 
 LABEL maintainer="Jay Rogers (@jaydrogers)"
 LABEL modified-by="Vladislav Khazhinov (@khazhinov)"
 
-# Make sure we keep apt silent during installs. Set other defaults as well
-ENV DEBIAN_FRONTEND=noninteractive \
+ARG PHP_VERSION='8.2'
+
+ENV BUILD_PHP_VERSION=$PHP_VERSION \
+    DEBIAN_FRONTEND=noninteractive \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
+    S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
+    S6_VERBOSITY=1 \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_HOME=/composer \
+    COMPOSER_MAX_PARALLEL_HTTP=24 \
     WEBUSER_HOME="/app" \
     PUID=9999 \
-    PGID=9999 \
-    LANGUAGE="ru_RU" \
-    LANG="ru_RU.UTF-8"
+    PGID=9999
 
-# Install Ondrej repos for Ubuntu focal, PHP8.2, composer and selected extensions
+COPY --from=repo-config /etc/apt/sources.list.d/ /etc/apt/sources.list.d/
+COPY --from=repo-config /etc/apt/trusted.gpg.d/ondrej-ubuntu-php.gpg /etc/apt/trusted.gpg.d/ondrej-ubuntu-php.gpg
+
 RUN apt-get update \
-    && echo "Добавление пользователя без привилегий..." \
+    \
+    && echo "Создание пользователя без root доступа..." \
     && groupadd -r -g $PGID webgroup \
     && useradd --no-log-init -r -s /usr/bin/bash -d $WEBUSER_HOME -u $PUID -g $PGID webuser \
+    \
     && echo "Установка базовых зависимостей..." \
-    && apt-get install -y --no-install-recommends gnupg \
-    && echo "deb http://ppa.launchpad.net/ondrej/php/ubuntu focal main" > /etc/apt/sources.list.d/ondrej-php.list \
-    && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4F4EA0AAE5267A6C \
-    && apt-get update \
     && apt-get -y --no-install-recommends install \
         ca-certificates \
         curl \
         unzip \
         git \
         make \
-        php8.2-dev \
+    \
+    && echo "Установка окружения PHP с предустановленным pecl для сборки расширений..." \
+    && apt-get update \
+    && apt-get -y --no-install-recommends install \
         php8.2-cli \
         php8.2-common \
+        php8.2-dev \
+        php-pear \
+        \
         php8.2-curl \
         php8.2-mbstring \
-        php8.2-pgsql \
         php8.2-gd \
         php8.2-xml \
-        php8.2-zip \
-        php-pear \
+        php8.2-bcmath \
+        php8.2-intl \
+        php8.2-pgsql \
+        php8.2-redis \
+    \
+    && echo "Установка символической ссылки..." \
+    && ln -sf /etc/php/8.2/ /etc/php/current_version \
+    \
+    && echo "Очистка системных кешей..." \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
-RUN pecl install redis
+COPY --from=composer:2.5.8 /usr/bin/composer /usr/bin/composer
+
+COPY --chmod=755 etc/s6-overlay/ /etc/s6-overlay/
 
 COPY conf.d/*.ini /etc/php/8.2/cli/conf.d/
 
-# Pull the official composer 2 image, and copy the composer executable from there
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Copy over S6 configurations
-COPY etc/cont-init.d/ /etc/cont-init.d/
-
-# Set the default work directory to our web user
 WORKDIR /app
 
-# Configure S6 to drop priveleges
 ENTRYPOINT ["/init"]
 
-# Run PHP
 CMD ["php", "-a"]
