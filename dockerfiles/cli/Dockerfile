@@ -65,6 +65,7 @@ RUN apt-get update \
         php8.2-intl \
         php8.2-pgsql \
         php8.2-redis \
+        php8.2-zip \
     \
     && echo "Установка символической ссылки..." \
     && ln -sf /etc/php/8.2/ /etc/php/current_version \
@@ -77,7 +78,7 @@ COPY --from=composer:2.5.8 /usr/bin/composer /usr/bin/composer
 
 COPY --chmod=755 etc/s6-overlay/ /etc/s6-overlay/
 
-COPY conf.d/*.ini /etc/php/8.2/cli/conf.d/
+COPY conf.d/*.ini /etc/php/current_version/cli/conf.d/
 
 WORKDIR /app
 
