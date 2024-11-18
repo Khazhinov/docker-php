@@ -1,57 +1,39 @@
 ARG BASE_IMAGE="ubuntu:22.04"
-ARG S6_SRC_URL="https://github.com/just-containers/s6-overlay/releases/download"
-ARG S6_OVERLAY_VERSION="3.1.6.2"
-ARG PHP_VERSION="8.2"
-ARG COMPOSER_VERSION="2.6.6"
+ARG PHP_VERSION="8.3"
+ARG COMPOSER_VERSION="2.8.2"
 ARG APPLICATION_WORKDIR="/app"
 
 ####################### Хак синтаксиса Dockerfile для обеспечения версионности засчёт аргументов
 FROM composer:${COMPOSER_VERSION} as composer
-ARG BASE_IMAGE
-ARG S6_SRC_URL
-ARG S6_OVERLAY_VERSION
-ARG PHP_VERSION
-ARG COMPOSER_VERSION
-ARG APPLICATION_WORKDIR
+ARG BASE_IMAGE="ubuntu:22.04"
+ARG PHP_VERSION="8.3"
+ARG COMPOSER_VERSION="2.8.2"
+ARG APPLICATION_WORKDIR="/app"
 
 ####################### Базовая установка образа с S6 Overlay
 FROM ${BASE_IMAGE}
-ARG BASE_IMAGE
-ARG S6_SRC_URL
-ARG S6_OVERLAY_VERSION
-ARG PHP_VERSION
-ARG COMPOSER_VERSION
-ARG APPLICATION_WORKDIR
+ARG BASE_IMAGE="ubuntu:22.04"
+ARG PHP_VERSION="8.3"
+ARG COMPOSER_VERSION="2.8.2"
+ARG APPLICATION_WORKDIR="/app"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     COMPOSER_ALLOW_SUPERUSER=1 \
     COMPOSER_HOME=/composer \
     COMPOSER_MAX_PARALLEL_HTTP=24 \
-    WEBUSER_HOME=$APPLICATION_WORKDIR \
-    PUID=9999 \
-    PGID=9999
+    PHP_VERSION=${PHP_VERSION}
 
 LABEL maintainer="Vladislav Khazhinov (@khazhinov)"
 
-# Установка базовых зависимостей, S6 Overlay и первичная пусконаладка
-RUN echo "Создание пользователя без root доступа..." \
-    && groupadd -r -g $PGID webgroup \
-    && useradd --no-log-init -r -s /usr/bin/bash -d $WEBUSER_HOME -u $PUID -g $PGID webuser \
-    ; \
-    echo "Установка фундаментальных зависимостей..." \
+# Установка базовых зависимостей
+RUN echo "Установка базовых зависимостей..." \
     && apt-get update \
-    && apt-get install -y --no-install-recommends xz-utils gnupg2 ca-certificates software-properties-common curl;
+    && apt-get install -y --no-install-recommends unzip git make xz-utils gnupg2 ca-certificates software-properties-common curl supervisor librdkafka-dev;
 
 # Установка зависимостей PHP
 RUN echo "Добавление репозитория PHP..." \
     && add-apt-repository -y ppa:ondrej/php \
     && apt-get update \
-    ; \
-    echo "Установка первичных зависимостей..." \
-    && apt-get -y --no-install-recommends install \
-        unzip \
-        git \
-        make \
     ; \
     echo "Установка окружения PHP с предустановленным pecl для сборки расширений..." \
     && apt-get -y --no-install-recommends install \
@@ -70,6 +52,7 @@ RUN echo "Добавление репозитория PHP..." \
         php${PHP_VERSION}-redis \
         php${PHP_VERSION}-zip \
     ; \
+    mkdir -p /var/log/supervisor; \
     echo "Установка символической ссылки для PHP ${PHP_VERSION}..." \
     && ln -sf /etc/php/${PHP_VERSION}/ /etc/php/current_version \
     ; \
@@ -77,15 +60,24 @@ RUN echo "Добавление репозитория PHP..." \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
-# Устанавливаем конфигурацию PHP
-COPY conf.d/*.ini /etc/php/current_version/cli/conf.d/
+# Установка rdkafka
+RUN pecl install rdkafka-6.0.5
+
+# Установка пусконаладочных скриптов
+COPY --chmod=+x docker-php-* /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-php-*
+
+# Установка конфигурационных файлов
+COPY conf.d /etc/php/${PHP_VERSION}/conf.d/
 
 # Применяем описанный в начале хак. Здесь composer ссылается не на composer:latest, а на указанный в аргументах
 COPY --from=composer /usr/bin/composer /usr/bin/composer
 
-# Установка остаточных пусконаладочных скриптов
-COPY --chmod=+x docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
-RUN chmod +x /usr/local/bin/docker-php-entrypoint
+# Финальный вывод информации о сборке
+RUN set -eux; \
+    php -v; \
+    php -m; \
+    composer --version;
 
 # Установка workdir
 WORKDIR ${APPLICATION_WORKDIR}
